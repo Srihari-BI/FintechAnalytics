@@ -1,0 +1,161 @@
+-- Query 1: Calculate the total balance of all accounts and the average balance per account type
+SELECT 
+    account_type,
+    COUNT(*) AS num_accounts,
+    SUM(balance) AS total_balance,
+    AVG(balance) AS avg_balance
+FROM 
+    Accounts
+GROUP BY 
+    account_type
+ORDER BY 
+    total_balance DESC;
+
+-- Query 2: Rank users based on their total transaction amounts
+WITH user_transactions AS (
+    SELECT 
+        u.user_id,
+        u.first_name,
+        u.last_name,
+        SUM(t.amount) AS total_transactions,
+        RANK() OVER (ORDER BY SUM(t.amount) DESC) AS transaction_rank
+    FROM 
+        Users u
+    JOIN 
+        Accounts a ON u.user_id = a.user_id
+    JOIN 
+        Transactions t ON a.account_id = t.account_id
+    GROUP BY 
+        u.user_id, u.first_name, u.last_name
+)
+SELECT 
+    user_id,
+    first_name,
+    last_name,
+    total_transactions,
+    transaction_rank
+FROM 
+    user_transactions
+WHERE 
+    transaction_rank <= 10;
+
+-- Query 3: Calculate the balance trend for each account type over time
+SELECT 
+    account_type,
+    DATE_TRUNC('month', transaction_date) AS month,
+    AVG(balance) AS avg_balance
+FROM 
+    Accounts a
+JOIN 
+    Transactions t ON a.account_id = t.account_id
+GROUP BY 
+    account_type, month
+ORDER BY 
+    account_type, month;
+
+-- Query 4: Identify users with more than one active loan and their total loan amount
+SELECT 
+    u.user_id,
+    u.first_name,
+    u.last_name,
+    COUNT(*) AS num_loans,
+    SUM(l.principal_amount) AS total_loan_amount
+FROM 
+    Users u
+JOIN 
+    Loans l ON u.user_id = l.user_id
+WHERE 
+    l.status = 'Active'
+GROUP BY 
+    u.user_id, u.first_name, u.last_name
+HAVING 
+    COUNT(*) > 1
+ORDER BY 
+    total_loan_amount DESC;
+
+-- Query 5: Calculate the median balance for each account type
+SELECT 
+    account_type,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY balance) AS median_balance
+FROM 
+    Accounts
+GROUP BY 
+    account_type;
+
+-- Query 6: Identify users who have not made any transactions in the last 3 months
+SELECT 
+    u.user_id,
+    u.first_name,
+    u.last_name
+FROM 
+    Users u
+LEFT JOIN 
+    Accounts a ON u.user_id = a.user_id
+LEFT JOIN 
+    Transactions t ON a.account_id = t.account_id
+WHERE 
+    t.transaction_id IS NULL
+    OR t.transaction_date < CURRENT_DATE - INTERVAL '3 months';
+
+-- Query 7: Find the top 5 accounts with the highest number of transactions
+SELECT 
+    a.account_id,
+    COUNT(t.transaction_id) AS num_transactions
+FROM 
+    Accounts a
+LEFT JOIN 
+    Transactions t ON a.account_id = t.account_id
+GROUP BY 
+    a.account_id
+ORDER BY 
+    num_transactions DESC
+LIMIT 5;
+
+-- Query 8: Calculate the cumulative sum of balances over time for each account
+SELECT 
+    account_id,
+    transaction_date,
+    balance,
+    SUM(balance) OVER (PARTITION BY account_id ORDER BY transaction_date) AS cumulative_balance
+FROM 
+    Transactions
+ORDER BY 
+    account_id, transaction_date;
+
+-- Query 9: Identify users whose total credit card balance exceeds their account balance
+SELECT 
+    u.user_id,
+    u.first_name,
+    u.last_name,
+    a.balance AS account_balance,
+    SUM(c.balance) AS total_credit_card_balance
+FROM 
+    Users u
+JOIN 
+    Accounts a ON u.user_id = a.user_id
+JOIN 
+    CreditCards c ON u.user_id = c.user_id
+GROUP BY 
+    u.user_id, u.first_name, u.last_name, a.balance
+HAVING 
+    SUM(c.balance) > a.balance;
+
+-- Query 10: Calculate the percentage change in account balance month-over-month
+WITH monthly_balances AS (
+    SELECT 
+        account_id,
+        DATE_TRUNC('month', transaction_date) AS month,
+        MAX(balance) AS month_end_balance
+    FROM 
+        Transactions
+    GROUP BY 
+        account_id, month
+)
+SELECT 
+    account_id,
+    month,
+    month_end_balance,
+    LAG(month_end_balance) OVER (PARTITION BY account_id ORDER BY month) AS previous_month_balance,
+    (month_end_balance - LAG(month_end_balance) OVER (PARTITION BY account_id ORDER BY month)) / NULLIF(LAG(month_end_balance) OVER (PARTITION BY account_id ORDER BY month), 0) AS percent_change
+FROM 
+    monthly_balances;
