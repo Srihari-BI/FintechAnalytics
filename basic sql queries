@@ -1,0 +1,34 @@
+-- Query 1: Select all users
+SELECT * FROM Users;
+
+-- Query 2: Select all accounts with a balance greater than 2000
+SELECT * FROM Accounts WHERE balance > 2000;
+
+-- Query 3: Find all transactions of type 'Deposit'
+SELECT * FROM Transactions WHERE transaction_type = 'Deposit';
+
+-- Query 4: Get the details of loans with an interest rate above 5%
+SELECT * FROM Loans WHERE interest_rate > 5;
+
+-- Query 5: Retrieve all credit cards that expire in 2024
+SELECT * FROM CreditCards WHERE expiration_date LIKE '2024%';
+
+-- Query 6: Count the number of users
+SELECT COUNT(*) FROM Users;
+
+-- Query 7: Find the total balance of all accounts
+SELECT SUM(balance) AS total_balance FROM Accounts;
+
+-- Query 8: List all users with their associated accounts
+SELECT u.first_name, u.last_name, a.account_type, a.balance
+FROM Users u
+JOIN Accounts a ON u.user_id = a.user_id;
+
+-- Query 9: Get the average loan amount for 'Personal' loans
+SELECT AVG(principal_amount) AS avg_personal_loan
+FROM Loans
+WHERE loan_type = 'Personal';
+
+-- Query 10: Find the highest transaction amount
+SELECT MAX(amount) AS highest_transaction
+FROM Transactions;
